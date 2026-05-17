@@ -47,64 +47,62 @@ public final class GameState {
       return this.pendingDirection;
   }
 
-  public GameState tick() {
-      // TODO: diese Methode lässt das Spiel einen Schritt laufen (berechnet den Spielzustand im
-      // nächsten Schritt)
+    public GameState tick() {
+        // 1. Early Exit: Keine Bewegung ohne Richtung oder wenn Spiel vorbei
+        if (!this.status.isRunning() || this.pendingDirection == null || this.pendingDirection == Direction.NONE) {
+            return this;
+        }
 
-      // TODO: early exit: wenn das Spiel nicht läuft oder keine Blickrichtung gesetzt ist: keine
-      if (!this.status.isRunning() || this.pendingDirection == null || this.pendingDirection == Direction.NONE) {
-          return this;
-      }
-      Position nextHeadPos = this.snake.nextHead(this.pendingDirection);
+        Position nextHeadPos = this.snake.nextHead(this.pendingDirection);
 
-      // TODO: prüfe die folgenden Bedingungen:
-      // (a) Schlange würde das Spielfeld verlassen: Spiel verloren
-      if (!this.level.isInside(nextHeadPos)) {
-          return new GameState(this.level, this.snake, this.pins, Status.LOST_OUT_OF_BOUNDS, this.pendingDirection);
-      }
-      // (b) Schlange würde in ein Wandelement gehen: Blockiert (keine Bewegung, Blickrichtung "none")
-      if (this.level.cellAt(nextHeadPos) == CellType.WALL) {
-          return new GameState(this.level, this.snake, this.pins, this.status, Direction.NONE);
-      }
-      // (c) Schlange beisst sich: Spiel verloren
-      if (this.snake.occupies(nextHeadPos)) {
-          return new GameState(this.level, this.snake, this.pins, Status.LOST_SELF_COLLISION, this.pendingDirection);
-      }
-      int pinIndex = -1;
-      for (int i = 0; i < this.pins.size(); i++) {
-          if (this.pins.get(i).position().equals(nextHeadPos)) {
-              pinIndex = i;
-              break;
-          }
-      }
+        // 2. Spielfeld verlassen -> Verloren
+        if (!this.level.isInside(nextHeadPos)) {
+            return new GameState(this.level, this.snake, this.pins, Status.LOST_OUT_OF_BOUNDS, this.pendingDirection);
+        }
 
-      if (pinIndex != -1) {
-          Pin targetedPin = this.pins.get(pinIndex);
-          // (d) Schlange würde auf einen Pin gehen (Pin bereits gesetzt oder Schlange kommt nicht in der
-          if (targetedPin.state().isSet() || targetedPin.activationDirection() != this.pendingDirection) {
-              return new GameState(this.level, this.snake, this.pins, this.status, Direction.NONE);
-          }
-          // Aktivierungsrichtung: Blockiert (keine Bewegung, Blickrichtung "none")
+        // 3. Wand berührt -> Blockiert (Richtung wird auf NONE gesetzt)
+        if (this.level.cellAt(nextHeadPos) == CellType.WALL) {
+            return new GameState(this.level, this.snake, this.pins, this.status, Direction.NONE);
+        }
 
-          // TODO: aktiviere einen noch nicht gesetzten Pin, wenn die Schlange in der richtigen Richtung
-          // auf den Pin gehen würde (die Schlange darf dabei aber nicht auf den Pin gehen)
-          if (!targetedPin.state().isSet()) {
-              // Pin-Liste kopieren und den betroffenen Pin auf HIGH setzen
-              List<Pin> updatedPins = new ArrayList<>(this.pins);
-              updatedPins.set(pinIndex, targetedPin.withState(Pin.State.HIGH));
+        // 4. Selbstkollision -> Verloren
+        if (this.snake.occupies(nextHeadPos)) {
+            return new GameState(this.level, this.snake, this.pins, Status.LOST_SELF_COLLISION, this.pendingDirection);
+        }
 
-              // Überprüfen, ob durch diesen Treffer alle Pins auf HIGH stehen -> Siegbedingung!
-              Status nextStatus = updatedPins.stream().allMatch(pin -> pin.state().isSet()) ? Status.WON : Status.RUNNING;
+        // 5. Pin-Logik prüfen
+        int pinIndex = -1;
+        for (int i = 0; i < this.pins.size(); i++) {
+            if (this.pins.get(i).position().equals(nextHeadPos)) {
+                pinIndex = i;
+                break;
+            }
+        }
 
-              // (die Schlange darf dabei aber nicht auf den Pin gehen -> wir bewegen sie nicht und setzen Blickrichtung auf NONE)
-              return new GameState(this.level, this.snake, updatedPins, nextStatus, Direction.NONE);
-          }
-      }
-      // TODO: anderenfalls: bewege die Schlange um einen Schritt in Blickrichtung (falls gesetzt)
-      Snake movedSnake = this.snake.grow(this.pendingDirection);
+        // Wenn ein Pin auf dem nächsten Feld liegt...
+        if (pinIndex != -1) {
+            Pin targetedPin = this.pins.get(pinIndex);
 
-      return new GameState(this.level, movedSnake, this.pins, this.status, this.pendingDirection);
-  }
+            // (d) Pin ist schon HIGH ODER wir kommen aus der falschen Richtung -> Blockieren!
+            if (targetedPin.state().isSet() || targetedPin.activationDirection() != this.pendingDirection) {
+                return new GameState(this.level, this.snake, this.pins, this.status, Direction.NONE);
+            }
+
+            // Pin erfolgreich knacken!
+            List<Pin> updatedPins = new ArrayList<>(this.pins);
+            updatedPins.set(pinIndex, targetedPin.withState(Pin.State.HIGH));
+
+            // Prüfen, ob alle Pins geknackt sind
+            Status nextStatus = updatedPins.stream().allMatch(pin -> pin.state().isSet()) ? Status.WON : Status.RUNNING;
+
+            // Zustand zurückgeben. Wichtig: Die Schlange zieht NICHT auf das Pin-Feld, sondern bleibt davor stehen (Direction.NONE)
+            return new GameState(this.level, this.snake, updatedPins, nextStatus, Direction.NONE);
+        }
+
+        // 6. Reguläre Bewegung: Die Schlange wächst als Dietrich in die gewünschte Richtung
+        Snake movedSnake = this.snake.grow(this.pendingDirection);
+        return new GameState(this.level, movedSnake, this.pins, this.status, this.pendingDirection);
+    }
   public enum Status {
     RUNNING,
     WON,

@@ -74,7 +74,7 @@ public final class GameEngine {
       );
       notifyObservers(); // GUI sofort aktualisieren
   }
-  }
+
 
   public void tick() {
     // TODO: lass das Spiel (den GameState) einen Schritt ("tick") machen

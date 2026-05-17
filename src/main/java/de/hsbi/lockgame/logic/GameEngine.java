@@ -80,7 +80,9 @@ public final class GameEngine {
     // TODO: lass das Spiel (den GameState) einen Schritt ("tick") machen
     // TODO: benachrichtige alle Observer und gibt den neuen Spielzustand mit (Neuzeichnen der
     // Spielfläche)
-
+      this.gameState = this.gameState.tick();
+      notifyObservers();
+  }
 
   }
 

@@ -66,7 +66,16 @@ public final class GameState {
         }
 
         // 4. Selbstkollision -> Verloren
-        if (this.snake.occupies(nextHeadPos)) {
+        // 4. Selbstkollision manuell über X/Y prüfen
+        boolean selfCollision = false;
+        for (Position bodyPart : this.snake.body()) {
+            if (bodyPart.x() == nextHeadPos.x() && bodyPart.y() == nextHeadPos.y()) {
+                selfCollision = true;
+                break;
+            }
+        }
+
+        if (selfCollision) {
             return new GameState(this.level, this.snake, this.pins, Status.LOST_SELF_COLLISION, this.pendingDirection);
         }
 

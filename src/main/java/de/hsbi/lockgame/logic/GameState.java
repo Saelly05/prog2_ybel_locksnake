@@ -73,12 +73,14 @@ public final class GameState {
         // 5. Pin-Logik prüfen
         int pinIndex = -1;
         for (int i = 0; i < this.pins.size(); i++) {
-            if (this.pins.get(i).position().equals(nextHeadPos)) {
+            // Option 2: Vergleicht die reinen X- und Y-Koordinaten
+            if (this.pins.get(i).position().x() == nextHeadPos.x() &&
+                this.pins.get(i).position().y() == nextHeadPos.y()) {
+
                 pinIndex = i;
                 break;
             }
         }
-
         // Wenn ein Pin auf dem nächsten Feld liegt...
         if (pinIndex != -1) {
             Pin targetedPin = this.pins.get(pinIndex);
